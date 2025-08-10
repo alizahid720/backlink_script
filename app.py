@@ -79,28 +79,37 @@ if run_clicked:
     results: List[BacklinkResult] = []
 
     try:
-        runner = BacklinkRunner(headless=True, per_tool_timeout_sec=45)
+        # Initialize runner with longer timeout for cloud deployment
+        runner = BacklinkRunner(headless=True, per_tool_timeout_sec=60)
     except Exception as exc:
         st.error(
-            "Failed to initialize browser automation. Make sure Playwright browsers are installed: `python -m playwright install chromium`\n\n"
-            f"Details: {exc}"
+            "Failed to initialize browser automation. This might be due to system dependencies or Playwright installation issues.\n\n"
+            f"Error details: {str(exc)}\n\n"
+            "Please try refreshing the page or contact support if the issue persists."
         )
         st.stop()
 
     total_tasks = len(targets) * len(runner.tools)
     completed_tasks = 0
 
-    for target_idx, target in enumerate(targets, start=1):
-        url = target["url"]
-        keywords = target["keywords"]
-        st.write(f"Processing: {url} | Keywords: {keywords}")
-        target_results = runner.run_for_target(url=url, keywords=keywords)
-        results.extend(target_results)
+    try:
+        for target_idx, target in enumerate(targets, start=1):
+            url = target["url"]
+            keywords = target["keywords"]
+            st.write(f"Processing: {url} | Keywords: {keywords}")
+            target_results = runner.run_for_target(url=url, keywords=keywords)
+            results.extend(target_results)
 
-        completed_tasks += len(runner.tools)
-        progress.progress(min(1.0, completed_tasks / max(1, total_tasks)), text=f"Completed {completed_tasks}/{total_tasks} tool submissions")
+            completed_tasks += len(runner.tools)
+            progress.progress(min(1.0, completed_tasks / max(1, total_tasks)), text=f"Completed {completed_tasks}/{total_tasks} tool submissions")
 
-    runner.shutdown()
+    except Exception as exc:
+        st.error(f"An error occurred during processing: {str(exc)}")
+    finally:
+        try:
+            runner.shutdown()
+        except:
+            pass
 
     # Aggregate and show
     if results:

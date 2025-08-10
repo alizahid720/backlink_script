@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import time
+import os
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse
@@ -22,7 +23,22 @@ class BacklinkRunner:
     def __init__(self, headless: bool = True, per_tool_timeout_sec: int = 45) -> None:
         self.per_tool_timeout_ms = per_tool_timeout_sec * 1000
         self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=headless)
+        
+        # Configure browser for cloud deployment
+        browser_args = [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu'
+        ]
+        
+        self.browser = self.playwright.chromium.launch(
+            headless=headless,
+            args=browser_args
+        )
         self.context = self.browser.new_context()
         self.tools: List[str] = self._load_tools()
 
@@ -88,8 +104,9 @@ class BacklinkRunner:
             try:
                 tool_results = self._run_single_tool(tool_url=tool, target_url=url, keywords=keywords)
                 results.extend(tool_results)
-            except Exception:
-                # Ignore failures per tool to keep the batch running
+            except Exception as e:
+                # Log error but continue with other tools
+                print(f"Error with tool {tool}: {str(e)}")
                 continue
         return results
 
