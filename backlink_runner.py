@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import time
 import os
+import subprocess
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 from urllib.parse import urlparse
@@ -22,6 +23,10 @@ class BacklinkResult:
 class BacklinkRunner:
     def __init__(self, headless: bool = True, per_tool_timeout_sec: int = 45) -> None:
         self.per_tool_timeout_ms = per_tool_timeout_sec * 1000
+        
+        # Ensure Playwright browsers are installed
+        self._ensure_playwright_installed()
+        
         self.playwright = sync_playwright().start()
         
         # Configure browser for cloud deployment
@@ -41,6 +46,26 @@ class BacklinkRunner:
         )
         self.context = self.browser.new_context()
         self.tools: List[str] = self._load_tools()
+
+    def _ensure_playwright_installed(self):
+        """Ensure Playwright browsers are installed"""
+        try:
+            # Try to import and start playwright to check if browsers are available
+            from playwright.sync_api import sync_playwright
+            p = sync_playwright().start()
+            p.stop()
+        except Exception as e:
+            if "Executable doesn't exist" in str(e) or "Please run the following command" in str(e):
+                # Browsers not installed, try to install them
+                try:
+                    subprocess.run(["python", "-m", "playwright", "install", "chromium"], 
+                                 check=True, capture_output=True)
+                    subprocess.run(["python", "-m", "playwright", "install-deps", "chromium"], 
+                                 check=True, capture_output=True)
+                except subprocess.CalledProcessError as install_error:
+                    raise Exception(f"Failed to install Playwright browsers: {install_error}")
+            else:
+                raise e
 
     def shutdown(self) -> None:
         try:
