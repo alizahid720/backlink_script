@@ -58,12 +58,15 @@ class BacklinkRunner:
             if "Executable doesn't exist" in str(e) or "Please run the following command" in str(e):
                 # Browsers not installed, try to install them
                 try:
-                    subprocess.run(["python", "-m", "playwright", "install", "chromium"], 
-                                 check=True, capture_output=True)
-                    subprocess.run(["python", "-m", "playwright", "install-deps", "chromium"], 
-                                 check=True, capture_output=True)
+                    # Install all browsers to ensure compatibility
+                    subprocess.run(["python", "-m", "playwright", "install"], 
+                                 check=True, capture_output=True, timeout=300)
+                    subprocess.run(["python", "-m", "playwright", "install-deps"], 
+                                 check=True, capture_output=True, timeout=300)
                 except subprocess.CalledProcessError as install_error:
                     raise Exception(f"Failed to install Playwright browsers: {install_error}")
+                except subprocess.TimeoutExpired:
+                    raise Exception("Playwright browser installation timed out")
             else:
                 raise e
 
